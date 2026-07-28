@@ -21,6 +21,18 @@ export class RangeTree {
 		if (i < this.start || i >= this.end) return undefined;
 		return this.root?.find(i) ?? undefined;
 	}
+
+	getRange(start: number, end: number): GridOffset[] {
+		if (start >= this.end) return [];
+		if (end < this.start) return [];
+
+		const a = this.find(start)?.index ?? 0;
+		const b = this.find(end)?.index ?? this.items.length;
+
+		const [left, right] = a <= b ? [a, b] : [b, a];
+
+		return this.items.slice(left, right + 1);
+	}
 }
 
 interface RangeTreeNode {

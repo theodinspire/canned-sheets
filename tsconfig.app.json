@@ -2,7 +2,7 @@
 	"extends": "@vue/tsconfig/tsconfig.dom.json",
 	"include": ["env.d.ts", "src/**/*", "src/**/*.vue", "test/**/*"],
 	"compilerOptions": {
-		"lib": ["es2023"],
+		"lib": ["ESNext", "dom"],
 
 		// Extra safety for array and object lookups, but may have false positives.
 		"noUncheckedIndexedAccess": true,

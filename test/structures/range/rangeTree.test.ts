@@ -46,40 +46,90 @@ describe('Single node', () => {
 	};
 
 	describe.each`
-		index  | start  | end    | before | within | after
-		${0}   | ${0}   | ${10}  | ${-5}  | ${5}   | ${15}
-		${1}   | ${100} | ${110} | ${95}  | ${105} | ${115}
-		${12}  | ${1}   | ${3}   | ${0}   | ${2}   | ${4}
-		${123} | ${-10} | ${0}   | ${-15} | ${-5}  | ${5}
+		start  | end    | before | within | after
+		${0}   | ${10}  | ${-5}  | ${5}   | ${15}
+		${100} | ${110} | ${95}  | ${105} | ${115}
+		${1}   | ${3}   | ${0}   | ${2}   | ${4}
+		${-10} | ${0}   | ${-15} | ${-5}  | ${5}
 	`(
-		'Given a node of index $index starting at $start and ending at $end',
-		({ index, start, end, before, within, after }: Example) => {
+		'Given a node starting at $start and ending at $end',
+		({ start, end, before, within, after }: Example) => {
+			const index = 0;
 			const offset = makeOffset(index, start, end);
 			const tree = new RangeTree([offset]);
 
-			it('The start value will return the node', () => {
-				const actual = tree.find(start);
-				expect(actual).toBe(offset);
+			describe('RangeTree.find()', () => {
+				it('The start value will return the node', () => {
+					const actual = tree.find(start);
+					expect(actual).toBe(offset);
+				});
+
+				it('The end value will return undefined', () => {
+					const actual = tree.find(end);
+					expect(actual).toBeUndefined();
+				});
+
+				it('A value between the end and the start will return the node', () => {
+					const actual = tree.find(within);
+					expect(actual).toBe(offset);
+				});
+
+				it('A value before the start will return undefined', () => {
+					const actual = tree.find(before);
+					expect(actual).toBeUndefined();
+				});
+
+				it('A value after the end will return undefined', () => {
+					const actual = tree.find(after);
+					expect(actual).toBeUndefined();
+				});
 			});
 
-			it('The end value will return undefined', () => {
-				const actual = tree.find(end);
-				expect(actual).toBeUndefined();
-			});
+			describe('RangeTree.getRange()', () => {
+				it('Range is entirely before, result is empty', () => {
+					const actual = tree.getRange(before - 1, before);
+					expect(actual).toEqual([]);
+				});
 
-			it('A value between the end and the start will return the node', () => {
-				const actual = tree.find(within);
-				expect(actual).toBe(offset);
-			});
+				it('Range is entirely after, result is empty', () => {
+					const actual = tree.getRange(after, after + 1);
+					expect(actual).toEqual([]);
+				});
 
-			it('A value before the start will return undefined', () => {
-				const actual = tree.find(before);
-				expect(actual).toBeUndefined();
-			});
+				it("Range starts at tree's end, result is empty", () => {
+					const actual = tree.getRange(end, after);
+					expect(actual).toEqual([]);
+				});
 
-			it('A value after the end will return undefined', () => {
-				const actual = tree.find(after);
-				expect(actual).toBeUndefined();
+				it('Range is only end, result is empty', () => {
+					const actual = tree.getRange(end, end);
+					expect(actual).toEqual([]);
+				});
+
+				it('Range ends at start, contains node', () => {
+					const actual = tree.getRange(before, start);
+					expect(actual).toEqual([offset]);
+				});
+
+				it('Range starts just before end, contains node', () => {
+					const actual = tree.getRange(end - 1, after);
+					expect(actual).toEqual([offset]);
+				});
+
+				it('Range lies within node, contains node', () => {
+					const actual = tree.getRange(start + 1, end - 1);
+					expect(actual).toEqual([offset]);
+				});
+
+				it('Range is only start, contains node', () => {
+					const actual = tree.getRange(start, start);
+					expect(actual).toEqual([offset]);
+				});
+
+				it('Range spans entirety, contains node', () => {
+					const actual = tree.getRange(before, after);
+					expect(actual).toEqual([offset]);
+				});
 			});
 		},
 	);
