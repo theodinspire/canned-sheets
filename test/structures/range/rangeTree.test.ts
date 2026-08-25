@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+﻿import { beforeAll, describe, expect, it } from 'vitest';
 import { type GridOffset } from '@/structures/utilities.ts';
 import { RangeTree } from '@/structures/range/rangeTree.ts';
 
@@ -34,6 +34,25 @@ const numbersToOffsets = (items: number[] | [number, number][]): GridOffset[] =>
 };
 
 const midpoint = (a: number, b: number) => Math.floor((a + b) / 2);
+
+const expectGetRangeEquivalency = (left: number, right: number, tree: RangeTree) => {
+	const width = right - left;
+
+	it(`The means of getting a range from ${left} to ${right} are equivalent`, () => {
+		const range = tree.getRange(left, right);
+		const rangeFromTo = tree.getRange.from(left).to(right);
+		const rangeFromWithWidth = tree.getRange.from(left).withWidth(width);
+
+		expect(rangeFromTo).toEqual(range);
+		expect(rangeFromWithWidth).toEqual(rangeFromTo);
+	});
+};
+
+const massExpectGetRangeEquivalency = (tree: RangeTree, pairs: [number, number][]) => {
+	describe.for(pairs)(`Given a pair of numbers [%i, %i]`, ([left, right]) =>
+		expectGetRangeEquivalency(left, right, tree),
+	);
+};
 
 describe('Single node', () => {
 	type Example = {
@@ -131,6 +150,20 @@ describe('Single node', () => {
 					expect(actual).toEqual([offset]);
 				});
 			});
+
+			const somePairs: [number, number][] = [
+				[before - 1, before],
+				[after, after + 1],
+				[end, after],
+				[end, end],
+				[before, start],
+				[end - 1, after],
+				[start + 1, end - 1],
+				[start, start],
+				[before, after],
+			];
+
+			massExpectGetRangeEquivalency(tree, somePairs);
 		},
 	);
 });
@@ -154,7 +187,7 @@ describe('Multiple Nodes', () => {
 				},
 			);
 
-			it.for(pairs)(' The start point returns node with self', ([start, end]) => {
+			it.for(pairs)('The start point returns node with self', ([start, end]) => {
 				const actual = tree.find(start);
 				expect(actual).toHaveProperty('start', start);
 				expect(actual).toHaveProperty('end', end);
@@ -170,6 +203,8 @@ describe('Multiple Nodes', () => {
 				const actual = tree.find(endpoints.at(-1)!);
 				expect(actual).toBeUndefined();
 			});
+
+			massExpectGetRangeEquivalency(tree, pairs);
 		},
 	);
 });

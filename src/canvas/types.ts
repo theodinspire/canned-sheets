@@ -2,9 +2,9 @@
 
 export type DatesAsStrings<T> = {
 	[K in keyof T]: T[K] extends Date ? ISODateTime
-		: T[K] extends object ? DatesAsStrings<T[K]>
-			: T[K] extends Array<infer I> ? DatesAsStrings<I>[]
-				: T[K];
+	: T[K] extends object ? DatesAsStrings<T[K]>
+	: T[K] extends Array<infer I> ? DatesAsStrings<I>[]
+	: T[K];
 };
 
 export type ApiDocumentData = {
@@ -139,15 +139,14 @@ type SheetObjectBase = {
 
 export type ApiSheetData = ChartSheet | ApiWorksheetSheetData;
 
-export type ApiColumnData = {
-	index: number;
-	width: number;
+export type BaseColumn = { index: number; width: number };
+export type BaseRow = { index: number; height: number };
+
+export type ApiColumnData = BaseColumn & {
 	cssClass: string;
 };
 
-export type ApiRowData = {
-	index: number;
-	height: number;
+export type ApiRowData = BaseRow & {
 	cells: Cell[];
 	cssClass: string;
 };
@@ -232,3 +231,7 @@ export enum SheetObjectType {
 	Shape = 0,
 	Chart = 1,
 }
+
+export type DocumentData = {
+	sheets: Sheet[];
+};
