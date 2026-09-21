@@ -1,7 +1,10 @@
 ﻿import {
+	type ApiCell,
 	type ApiColumnData,
 	type ApiDocumentData,
+	type ApiRowData,
 	type ApiSheetData,
+	type Cell,
 	type Column,
 	type DocumentData,
 	type Row,
@@ -11,6 +14,7 @@
 import { RangeTree } from '@/structures/range/rangeTree.ts';
 import type { GridOffset } from '@/structures/utilities.ts';
 import { DEFAULT_CELL_HEIGHT, DEFAULT_CELL_WIDTH } from '@/canvas/constants.ts';
+import { cellNameToIndices } from '@/canvas/helpers.ts';
 
 const emptyColumn = (index: number, widthOffset: number): Column => ({
 	index,
@@ -57,16 +61,33 @@ const processColumns = (columns: ApiColumnData[]): Column[] => {
 	return ary;
 };
 
+const apiCellToCell = (apiCell: ApiCell): Cell => {
+	return {
+		...apiCell,
+		...cellNameToIndices(apiCell.name),
+	};
+};
+
+const apiRowToRow = (apiRow: ApiRowData, index: number): Row => {
+	return {
+		...apiRow,
+		heightOffset: index * DEFAULT_CELL_HEIGHT,
+		hidden: false,
+		cells: apiRow.cells.map(apiCellToCell),
+	};
+};
+
+const toSparseArray = <T extends { index: number }>(array: T[]): T[] => {
+	return array.reduce((acc, next) => {
+		acc[next.index] = next;
+		return acc;
+	}, [] as T[]);
+};
+
 const processSheet = (s: ApiSheetData): Sheet => {
 	if (s.$type === SheetType.Chart) return { ...s };
 
-	const rows = s.rows.map(
-		(r, i): Row => ({
-			...r,
-			heightOffset: i * DEFAULT_CELL_HEIGHT,
-			hidden: false,
-		}),
-	);
+	const rows = s.rows.map(apiRowToRow);
 
 	const columns = processColumns(s.columns);
 

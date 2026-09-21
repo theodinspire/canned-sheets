@@ -5,7 +5,7 @@ type GetRangeBaseMethod = (start: number, end: number) => GridOffset[];
 interface RangeGetter extends GetRangeBaseMethod {
 	from: (start: number) => {
 		to: (end: number) => GridOffset[];
-		overRange: (width: number) => GridOffset[];
+		for: (width: number) => GridOffset[];
 	};
 }
 
@@ -15,7 +15,7 @@ const makeRangeGetter = (f: GetRangeBaseMethod) => {
 			if (prop === 'from')
 				return ((start: number) => ({
 					to: (end: number) => target(start, end),
-					overRange: (width: number) => target(start, start + width),
+					for: (width: number) => target(start, start + width),
 				})) as RangeGetter['from'];
 
 			return Reflect.get(target, prop, receiver, ...rest);
@@ -42,6 +42,10 @@ export class RangeTree {
 		this.root = createNode(this.items);
 	}
 
+	/**
+	 *
+	 * @param i
+	 */
 	find(i: number): GridOffset | undefined {
 		if (i < this.start || i >= this.end) return undefined;
 		return this.root?.find(i) ?? undefined;

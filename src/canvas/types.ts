@@ -147,7 +147,7 @@ export type ApiColumnData = BaseColumn & {
 };
 
 export type ApiRowData = BaseRow & {
-	cells: Cell[];
+	cells: ApiCell[];
 	cssClass: string;
 };
 
@@ -178,18 +178,20 @@ export type Column = ApiColumnData & {
 	hidden: boolean;
 };
 
-export type Row = ApiRowData & {
+export type Row = Omit<ApiRowData, 'cells'> & {
 	heightOffset: number;
 	cells: Cell[];
 	hidden: boolean;
 };
 
-export type Cell = {
+export type ApiCell = {
 	name: string;
 	value: string;
 	cssClass: string;
 	imageBase64String?: string;
 };
+
+export type Cell = ApiCell & CellCoordinates;
 
 export interface CssProperties {
 	properties: Record<string, string>;
@@ -224,7 +226,7 @@ export type SheetName = {
 
 export type CellCoordinates = {
 	row: number;
-	col: number;
+	column: number;
 };
 
 export enum SheetObjectType {

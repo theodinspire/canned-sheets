@@ -1,4 +1,4 @@
-﻿import type { ApiColumnData, ApiRowData } from '@/canvas/types.ts';
+﻿import type { ApiColumnData, ApiRowData, CellCoordinates } from '@/canvas/types.ts';
 
 export const defaultRowHeight = 20;
 export const defaultColumnWidth = 64;
