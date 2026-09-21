@@ -101,3 +101,15 @@ export const columnsToRanges = (columns: Column[]): RangeTree => {
 	const gridOffsets = columns.map(columnToOffset);
 	return new RangeTree(gridOffsets);
 };
+
+const rowToOffset = (row: Row): GridOffset => ({
+	index: row.index,
+	start: row.heightOffset,
+	end: row.heightOffset + row.height,
+	size: row.height,
+});
+
+export const rowsToRanges = (rows: Row[]): RangeTree => {
+	const gridOffsets = rows.map(rowToOffset);
+	return new RangeTree(gridOffsets);
+};

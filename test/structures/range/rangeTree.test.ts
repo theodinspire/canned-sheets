@@ -41,7 +41,7 @@ const expectGetRangeEquivalency = (left: number, right: number, tree: RangeTree)
 	it(`The means of getting a range from ${left} to ${right} are equivalent`, () => {
 		const range = tree.getRange(left, right);
 		const rangeFromTo = tree.getRange.from(left).to(right);
-		const rangeFromWithWidth = tree.getRange.from(left).withWidth(width);
+		const rangeFromWithWidth = tree.getRange.from(left).overRange(width);
 
 		expect(rangeFromTo).toEqual(range);
 		expect(rangeFromWithWidth).toEqual(rangeFromTo);

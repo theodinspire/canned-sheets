@@ -1,15 +1,8 @@
 ﻿<script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import { columnsToRanges, process } from './processData.ts';
+import { columnsToRanges, process, rowsToRanges } from './processData.ts';
 import raw from '../assets/fullflow.xlsx.json';
-import { DEFAULT_CELL_HEIGHT, DEFAULT_CELL_WIDTH } from './constants.ts';
-import {
-	type ApiDocumentData,
-	type BaseColumn,
-	type BaseRow,
-	type Column,
-	SheetType,
-} from './types.ts';
+import { type ApiDocumentData, SheetType } from './types.ts';
 import { getColumnName } from '@/canvas/helpers.ts';
 import type { GridOffset } from '@/structures/utilities.ts';
 
@@ -27,6 +20,11 @@ const width = computed(() => wrapper.value?.clientWidth ?? 0);
 const columnTree = computed(() => {
 	const columns = sheet.value && 'columns' in sheet.value ? sheet.value.columns : [];
 	return columnsToRanges(columns);
+});
+
+const rowTree = computed(() => {
+	const rows = sheet.value && 'rows' in sheet.value ? sheet.value.rows : [];
+	return rowsToRanges(rows);
 });
 
 const headerColor = '#f9fafb';
@@ -73,32 +71,46 @@ const drawColumnsFromTree = (ctx: CanvasRenderingContext2D) => {
 	ctx.stroke();
 
 	// Columns
-	const columns = columnTree.value.getRange.from(xScroll.value).withWidth(width.value);
+	const columns = columnTree.value.getRange.from(xScroll.value).overRange(width.value);
 	for (const column of columns) drawColumnWithScroll(ctx, column);
 };
 
-const drawRow = (ctx: CanvasRenderingContext2D, y: number, row: BaseRow): number => {
+const drawRowWithScroll = (ctx: CanvasRenderingContext2D, row: GridOffset) => {
+	const y = rowOffset.value - yScroll.value + row.start;
+
 	const line = y + 0.5;
+
+	const name = (row.index + 1).toString();
+
+	const textCenterX = columnOffset.value / 2;
+	const textCenterY = line + row.size / 2 + 1;
+
+	ctx.fillText(name, textCenterX, textCenterY, rowOffset.value);
+
+	if (y <= rowOffset.value || y >= height.value) return ctx.stroke();
 
 	ctx.beginPath();
 	ctx.moveTo(0, line);
 	ctx.lineTo(width.value!, line);
 	ctx.stroke();
-
-	const name = (row.index + 1).toString();
-	const textCenter = columnOffset.value / 2;
-	ctx.fillText(name, textCenter, y + 16, columnOffset.value);
-
-	return y + row.height + 1;
 };
 
-const drawRows = (ctx: CanvasRenderingContext2D, rows: (BaseRow | undefined)[]) => {
-	let y = rowOffset.value;
-	let i = 0;
-	while (y < height.value) {
-		const row = rows[i++] ?? { index: i, height: DEFAULT_CELL_HEIGHT };
-		y = drawRow(ctx, y, row);
-	}
+const drawRowsFromTree = (ctx: CanvasRenderingContext2D) => {
+	// Top line
+	const line = rowOffset.value + 0.5;
+	ctx.beginPath();
+	ctx.moveTo(0, line);
+	ctx.lineTo(width.value!, line);
+	ctx.stroke();
+
+	// Rows
+	const baseLine = ctx.textBaseline;
+	ctx.textBaseline = 'middle';
+
+	const rows = rowTree.value.getRange.from(yScroll.value).overRange(height.value);
+	for (const row of rows) drawRowWithScroll(ctx, row);
+
+	ctx.textBaseline = baseLine;
 };
 
 const drawGrid = (ctx: CanvasRenderingContext2D) => {
@@ -123,7 +135,7 @@ const drawGrid = (ctx: CanvasRenderingContext2D) => {
 
 	// drawColumns(ctx, sheet.value.columns);
 	drawColumnsFromTree(ctx);
-	drawRows(ctx, sheet.value.rows);
+	drawRowsFromTree(ctx);
 };
 
 watch([width, height, xScroll, yScroll], async ([w, h, x, y]) => {
