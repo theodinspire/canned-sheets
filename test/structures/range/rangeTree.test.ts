@@ -1,8 +1,7 @@
-﻿import { beforeAll, describe, expect, it } from 'vitest';
-import { type GridOffset } from '@/structures/utilities.ts';
-import { RangeTree } from '@/structures/range/rangeTree.ts';
+﻿import { describe, expect, it } from 'vitest';
+import RangeTree, { type Rangeable } from '@/structures/range/rangeTree.ts';
 
-const makeOffset = (index: number, start: number, end: number): GridOffset => ({
+const makeOffset = (index: number, start: number, end: number): Rangeable => ({
 	index,
 	start,
 	end,
@@ -18,14 +17,14 @@ const pairUp = <T>(items: T[]): [T, T][] => {
 		.slice(0, -1) as [T, T][];
 };
 
-const pairsToOffsets = ([start, end]: [number, number], index: number): GridOffset =>
+const pairsToOffsets = ([start, end]: [number, number], index: number): Rangeable =>
 	makeOffset(index, start, end);
 
 const isPair = (x: [number, number] | number): x is [number, number] => x instanceof Array;
 const arePairs = (a: [number, number][] | number[]): a is [number, number][] =>
 	a[0] === undefined ? false : isPair(a[0]);
 
-const numbersToOffsets = (items: number[] | [number, number][]): GridOffset[] => {
+const numbersToOffsets = (items: number[] | [number, number][]): Rangeable[] => {
 	if (items.length <= 1) return [];
 
 	const pairs = arePairs(items) ? items : pairUp(items);
@@ -35,7 +34,7 @@ const numbersToOffsets = (items: number[] | [number, number][]): GridOffset[] =>
 
 const midpoint = (a: number, b: number) => Math.floor((a + b) / 2);
 
-const expectGetRangeEquivalency = (left: number, right: number, tree: RangeTree) => {
+const expectGetRangeEquivalency = (left: number, right: number, tree: RangeTree<Rangeable>) => {
 	const width = right - left;
 
 	it(`The means of getting a range from ${left} to ${right} are equivalent`, () => {
@@ -48,7 +47,7 @@ const expectGetRangeEquivalency = (left: number, right: number, tree: RangeTree)
 	});
 };
 
-const massExpectGetRangeEquivalency = (tree: RangeTree, pairs: [number, number][]) => {
+const massExpectGetRangeEquivalency = (tree: RangeTree<Rangeable>, pairs: [number, number][]) => {
 	describe.for(pairs)(`Given a pair of numbers [%i, %i]`, ([left, right]) =>
 		expectGetRangeEquivalency(left, right, tree),
 	);

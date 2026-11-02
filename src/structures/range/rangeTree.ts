@@ -1,12 +1,81 @@
 ﻿import type { GridOffset } from '@/structures/utilities.ts';
 
-type GetRangeBaseMethod = (start: number, end: number) => GridOffset[];
+export interface Rangeable {
+	readonly index: number;
+	readonly start: number;
+	readonly end: number;
+	readonly size: number;
+}
+
+export interface RangeWrapper<T> extends Rangeable {
+	readonly value: T;
+}
+
+type GetRangeBaseMethod = (start: number, end: number) => Rangeable[];
 
 interface RangeGetter extends GetRangeBaseMethod {
 	from: (start: number) => {
-		to: (end: number) => GridOffset[];
-		for: (width: number) => GridOffset[];
+		to: (end: number) => Rangeable[];
+		for: (width: number) => Rangeable[];
 	};
+}
+
+interface RangeTreeNode<T extends Rangeable> {
+	find(i: number): T | undefined;
+	get start(): number;
+	get end(): number;
+}
+
+class RangeTreeLeaf<T extends Rangeable> implements RangeTreeNode<T> {
+	private readonly leaf: T;
+
+	get start() {
+		return this.leaf.start;
+	}
+	get end() {
+		return this.leaf.end;
+	}
+
+	constructor(item: T) {
+		this.leaf = item;
+	}
+
+	find(_i: number): T | undefined {
+		return this.leaf;
+	}
+}
+
+const createNode = <T extends Rangeable>(items: T[]): RangeTreeNode<T> => {
+	if (items.length == 1) return new RangeTreeLeaf(items[0]!);
+	if (items.length > 1) return new RangeTreeBranch(items);
+	throw new Error('Cannot build a range tree node from an empty collection');
+};
+
+class RangeTreeBranch<T extends Rangeable> implements RangeTreeNode<T> {
+	readonly #left: RangeTreeNode<T>;
+	readonly #right: RangeTreeNode<T>;
+
+	get start(): number {
+		return this.#left.start;
+	}
+	get end(): number {
+		return this.#right.end;
+	}
+
+	get #mid() {
+		return this.#right.start;
+	}
+
+	constructor(items: T[]) {
+		const mid = Math.floor(items.length / 2);
+		this.#left = createNode(items.slice(0, mid));
+		this.#right = createNode(items.slice(mid));
+	}
+
+	find(i: number): T | undefined {
+		if (i >= this.#mid) return this.#right.find(i);
+		return i >= this.#mid ? this.#right.find(i) : this.#left.find(i);
+	}
 }
 
 const makeRangeGetter = (f: GetRangeBaseMethod) => {
@@ -25,101 +94,39 @@ const makeRangeGetter = (f: GetRangeBaseMethod) => {
 	return new Proxy(f, handler) as RangeGetter;
 };
 
-export class RangeTree {
-	private readonly items: GridOffset[];
-	private readonly root: RangeTreeNode | undefined = undefined;
+export default class RangeTree<T extends Rangeable> {
+	readonly #items: T[];
+	readonly #root: RangeTreeNode<T> | undefined = undefined;
 
 	private get start(): number {
-		return this.root?.start ?? 0;
+		return this.#root?.start ?? 0;
 	}
 	private get end(): number {
-		return this.root?.end ?? 0;
+		return this.#root?.end ?? 0;
 	}
 
-	constructor(items: GridOffset[]) {
-		this.items = items;
-		if (this.items.length === 0) return;
-		this.root = createNode(this.items);
+	constructor(items: T[]) {
+		this.#items = items;
+		if (this.#items.length === 0) return;
+		this.#root = createNode(this.#items);
 	}
 
-	/**
-	 *
-	 * @param i
-	 */
 	find(i: number): GridOffset | undefined {
 		if (i < this.start || i >= this.end) return undefined;
-		return this.root?.find(i) ?? undefined;
+		return this.#root?.find(i) ?? undefined;
 	}
 
-	private fromStartToEnd(start: number, end: number): GridOffset[] {
+	private fromStartToEnd(start: number, end: number): T[] {
 		if (start >= this.end) return [];
 		if (end < this.start) return [];
 
 		const a = this.find(start)?.index ?? 0;
-		const b = this.find(end)?.index ?? this.items.length;
+		const b = this.find(end)?.index ?? this.#items.length;
 
 		const [left, right] = a <= b ? [a, b] : [b, a];
 
-		return this.items.slice(left, right + 1);
+		return this.#items.slice(left, right + 1);
 	}
 
 	getRange = makeRangeGetter((start, end) => this.fromStartToEnd(start, end));
 }
-
-interface RangeTreeNode {
-	find(i: number): GridOffset | undefined;
-	get start(): number;
-	get end(): number;
-}
-
-class RangeTreeLeaf implements RangeTreeNode {
-	private readonly leaf: GridOffset;
-
-	get start() {
-		return this.leaf.start;
-	}
-	get end() {
-		return this.leaf.end;
-	}
-
-	constructor(item: GridOffset) {
-		this.leaf = item;
-	}
-
-	find(_i: number): GridOffset | undefined {
-		return this.leaf;
-	}
-}
-
-class RangeTreeBranch implements RangeTreeNode {
-	private readonly left: RangeTreeNode;
-	private readonly right: RangeTreeNode;
-
-	get start(): number {
-		return this.left.start;
-	}
-	get end(): number {
-		return this.right.end;
-	}
-
-	private get mid() {
-		return this.right.start;
-	}
-
-	constructor(items: GridOffset[]) {
-		const mid = Math.floor(items.length / 2);
-		this.left = createNode(items.slice(0, mid));
-		this.right = createNode(items.slice(mid));
-	}
-
-	find(i: number): GridOffset | undefined {
-		if (i >= this.mid) return this.right.find(i);
-		return i >= this.mid ? this.right.find(i) : this.left.find(i);
-	}
-}
-
-const createNode = (items: GridOffset[]): RangeTreeNode => {
-	if (items.length == 1) return new RangeTreeLeaf(items[0]!);
-	if (items.length > 1) return new RangeTreeBranch(items);
-	throw new Error('Cannot build a range tree node from an empty collection');
-};

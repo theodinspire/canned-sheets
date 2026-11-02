@@ -11,7 +11,7 @@
 	type Sheet,
 	SheetType,
 } from './types.ts';
-import { RangeTree } from '@/structures/range/rangeTree.ts';
+import RangeTree from '@/structures/range/rangeTree.ts';
 import type { GridOffset } from '@/structures/utilities.ts';
 import { DEFAULT_CELL_HEIGHT, DEFAULT_CELL_WIDTH } from '@/canvas/constants.ts';
 import { cellNameToIndices } from '@/canvas/helpers.ts';
@@ -77,13 +77,6 @@ const apiRowToRow = (apiRow: ApiRowData, index: number): Row => {
 	};
 };
 
-const toSparseArray = <T extends { index: number }>(array: T[]): T[] => {
-	return array.reduce((acc, next) => {
-		acc[next.index] = next;
-		return acc;
-	}, [] as T[]);
-};
-
 const processSheet = (s: ApiSheetData): Sheet => {
 	if (s.$type === SheetType.Chart) return { ...s };
 
@@ -98,8 +91,6 @@ const processSheet = (s: ApiSheetData): Sheet => {
 		comments: [],
 		sheetObjects: [],
 		columnOffset: 0,
-		cssClass: '',
-		cssClassDictionary: {},
 		maxColumn: columns.length,
 		maxRow: rows.length,
 	};
@@ -118,7 +109,7 @@ const columnToOffset = (column: Column): GridOffset => ({
 	size: column.width,
 });
 
-export const columnsToRanges = (columns: Column[]): RangeTree => {
+export const columnsToRanges = (columns: Column[]): RangeTree<GridOffset> => {
 	const gridOffsets = columns.map(columnToOffset);
 	return new RangeTree(gridOffsets);
 };
@@ -130,7 +121,7 @@ const rowToOffset = (row: Row): GridOffset => ({
 	size: row.height,
 });
 
-export const rowsToRanges = (rows: Row[]): RangeTree => {
+export const rowsToRanges = (rows: Row[]): RangeTree<GridOffset> => {
 	const gridOffsets = rows.map(rowToOffset);
 	return new RangeTree(gridOffsets);
 };
