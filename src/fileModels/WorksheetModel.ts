@@ -1,14 +1,11 @@
 ﻿import {
 	type ApiCell,
 	type ApiColumnData,
-	type ApiDocumentData,
 	type ApiRowData,
 	type ApiSheetData,
 	type Cell,
 	type Column,
-	type DocumentData,
 	type Row,
-	type Sheet,
 	SheetType,
 } from '@/canvas/types.ts';
 import { DEFAULT_CELL_HEIGHT, DEFAULT_CELL_WIDTH } from '@/canvas/constants.ts';
@@ -76,71 +73,105 @@ const apiRowToRow = (apiRow: ApiRowData, index: number): Row => {
 	};
 };
 
-const processSheet = (s: ApiSheetData): Sheet => {
-	if (s.$type === SheetType.Chart) return { ...s };
+class ColumnSpan implements RangeWrapper<Column> {
+	readonly #column: Column;
+	readonly #end: number;
 
-	const rows = s.rows.map(apiRowToRow);
+	constructor(column: Column) {
+		this.#column = column;
+		this.#end = column.widthOffset + column.width;
+	}
 
-	const columns = processColumns(s.columns);
+	get index() {
+		return this.#column.index;
+	}
 
-	return {
-		...s,
-		rows,
-		columns,
-		comments: [],
-		sheetObjects: [],
-		columnOffset: 0,
-		maxColumn: columns.length,
-		maxRow: rows.length,
-	};
-};
+	get start() {
+		return this.#column.widthOffset;
+	}
 
-export const process = (raw: ApiDocumentData): DocumentData => {
-	return {
-		sheets: raw.sheets.map(processSheet),
-	};
-};
+	get end() {
+		return this.#end;
+	}
 
-const columnToOffset = (column: Column): RangeWrapper<Column> => ({
-	index: column.index,
-	start: column.widthOffset,
-	end: column.widthOffset + column.width,
-	size: column.width,
-	value: column,
-});
+	get size() {
+		return this.#column.width;
+	}
 
-export const columnsToRanges = (columns: Column[]): RangeTree<RangeWrapper<Column>> => {
-	const gridOffsets = columns.map(columnToOffset);
+	get value() {
+		return this.#column;
+	}
+}
+
+const columnToRange = (column: Column) => new ColumnSpan(column);
+
+export const columnsToRanges = (columns: Column[]): RangeTree<ColumnSpan> => {
+	const gridOffsets = columns.map(columnToRange);
 	return new RangeTree(gridOffsets);
 };
 
-const rowToOffset = (row: Row): RangeWrapper<Row> => ({
-	index: row.index,
-	start: row.heightOffset,
-	end: row.heightOffset + row.height,
-	size: row.height,
-	value: row,
-});
+class RowSpan implements RangeWrapper<Row> {
+	readonly #row: Row;
+	readonly #end: number;
 
-export const rowsToRanges = (rows: Row[]): RangeTree<RangeWrapper<Row>> => {
-	const gridOffsets = rows.map(rowToOffset);
+	constructor(row: Row) {
+		this.#row = row;
+		this.#end = row.heightOffset + row.height;
+	}
+
+	get index() {
+		return this.#row.index;
+	}
+
+	get start() {
+		return this.#row.heightOffset;
+	}
+
+	get end() {
+		return this.#end;
+	}
+
+	get size() {
+		return this.#row.height;
+	}
+
+	get value() {
+		return this.#row;
+	}
+}
+
+const rowToRange = (row: Row) => new RowSpan(row);
+
+export const rowsToRanges = (rows: Row[]): RangeTree<RowSpan> => {
+	const gridOffsets = rows.map(rowToRange);
 	return new RangeTree(gridOffsets);
 };
 
 export default class WorksheetModel {
 	#cells: Map<string, Cell>;
-	#rows: Row[];
-	#columns: Column[];
+	#rows: RangeTree<RowSpan>;
+	#columns: RangeTree<ColumnSpan>;
 
 	constructor(data: ApiSheetData) {
 		if (data.$type !== SheetType.Worksheet)
 			throw new Error('Cannot create a worksheet model out of chart sheet data');
 
-		this.#rows = data.rows.map(apiRowToRow);
-		this.#columns = processColumns(data.columns);
+		const rowData = data.rows.map(apiRowToRow);
 
-		this.#rows.flatMap((r) => r.cells);
+		this.#rows = rowsToRanges(rowData);
+		this.#columns = columnsToRanges(processColumns(data.columns));
 
-		this.#cells = new Map(this.#rows.flatMap((r) => r.cells).map((c) => [c.name, c]));
+		this.#cells = new Map(rowData.flatMap((r) => r.cells).map((c) => [c.name, c]));
+	}
+
+	getGrid(top: number, left: number, bottom: number, right: number): { rows: Row[], columns: Column[] } {
+		return {
+			rows: this.#rows.getRange.from(top).to(bottom).map(x => x.value),
+			columns: this.#columns.getRange.from(left).to(right).map(x => x.value),
+		}
+	}
+
+	getCell(cellName: string) {
+		return this.#cells.get(cellName);
 	}
 }

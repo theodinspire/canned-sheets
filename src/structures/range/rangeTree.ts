@@ -11,12 +11,12 @@ export interface RangeWrapper<T> extends Rangeable {
 	readonly value: T;
 }
 
-type GetRangeBaseMethod = (start: number, end: number) => Rangeable[];
+type GetRangeBaseMethod<T extends Rangeable> = (start: number, end: number) => T[];
 
-interface RangeGetter extends GetRangeBaseMethod {
+interface RangeGetter<T extends Rangeable> extends GetRangeBaseMethod<T> {
 	from: (start: number) => {
-		to: (end: number) => Rangeable[];
-		for: (width: number) => Rangeable[];
+		to: (end: number) => T[];
+		for: (width: number) => T[];
 	};
 }
 
@@ -78,20 +78,20 @@ class RangeTreeBranch<T extends Rangeable> implements RangeTreeNode<T> {
 	}
 }
 
-const makeRangeGetter = (f: GetRangeBaseMethod) => {
-	const handler: ProxyHandler<GetRangeBaseMethod> = {
-		get: function (target: GetRangeBaseMethod, prop, receiver, ...rest: []) {
+const makeRangeGetter = <T extends Rangeable>(f: GetRangeBaseMethod<T>) => {
+	const handler: ProxyHandler<GetRangeBaseMethod<T>> = {
+		get: function (target: GetRangeBaseMethod<T>, prop, receiver, ...rest: []) {
 			if (prop === 'from')
 				return ((start: number) => ({
 					to: (end: number) => target(start, end),
 					for: (width: number) => target(start, start + width),
-				})) as RangeGetter['from'];
+				})) as RangeGetter<T>['from'];
 
 			return Reflect.get(target, prop, receiver, ...rest);
 		},
 	};
 
-	return new Proxy(f, handler) as RangeGetter;
+	return new Proxy(f, handler) as RangeGetter<T>;
 };
 
 export default class RangeTree<T extends Rangeable> {
